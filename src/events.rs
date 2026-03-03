@@ -18,7 +18,19 @@ pub fn handle_events(app: &mut App) -> Result<bool, Box<dyn std::error::Error>> 
         return Ok(handle_confirm_delete(app, key));
     }
 
+    #[cfg(not(target_os = "windows"))]
     if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('v') {
+        if app.is_special_views_popup() {
+            app.close_popup();
+        } else {
+            app.set_popup_state(PopupState::SpecialViews);
+            app.folder_index = 0;
+        }
+        app.request_update();
+        return Ok(false);
+    }
+    #[cfg(target_os = "windows")]
+    if key.modifiers.contains(KeyModifiers::ALT) && key.code == KeyCode::Char('v') {
         if app.is_special_views_popup() {
             app.close_popup();
         } else {
@@ -212,7 +224,17 @@ fn handle_calendar_day_tasks_mode(app: &mut App, key: event::KeyEvent) -> bool {
             }
             false
         }
+        #[cfg(not(target_os = "windows"))]
         KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            if !app.calendar.day_tasks.is_empty() {
+                app.set_popup_state(PopupState::ConfirmDelete);
+                app.delete_target = Some(crate::models::DeleteTarget::Task);
+                app.request_update();
+            }
+            false
+        }
+        #[cfg(target_os = "windows")]
+        KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::ALT) => {
             if !app.calendar.day_tasks.is_empty() {
                 app.set_popup_state(PopupState::ConfirmDelete);
                 app.delete_target = Some(crate::models::DeleteTarget::Task);
@@ -283,6 +305,8 @@ fn handle_char(
     modifiers: KeyModifiers,
     c: char,
 ) {
+
+    #[cfg(not(target_os = "windows"))]
     if modifiers.contains(KeyModifiers::CONTROL) && c == 'c' {
         if !app.tasks.is_empty() && matches!(app.view_mode, ViewMode::Normal) {
             app.set_popup_state(PopupState::MoveTask);
@@ -291,14 +315,34 @@ fn handle_char(
         }
         return;
     }
+    #[cfg(target_os = "windows")]
+    if modifiers.contains(KeyModifiers::ALT) && c == 'c' {
+        if !app.tasks.is_empty() && matches!(app.view_mode, ViewMode::Normal) {
+            app.set_popup_state(PopupState::MoveTask);
+            app.move_target = Some(MoveTarget::Task);
+            app.folder_index = 0;
+        }
+        return;
+    }
 
+
+    #[cfg(not(target_os = "windows"))]
     if modifiers.contains(KeyModifiers::CONTROL) && c == 'f' {
         if !app.tasks.is_empty() {
             let _ = app.open_file_in_editor();
         }
         return;
     }
+    #[cfg(target_os = "windows")]
+    if modifiers.contains(KeyModifiers::ALT) && c == 'f' {
+        if !app.tasks.is_empty() {
+            let _ = app.open_file_in_editor();
+        }
+        return;
+    }
 
+
+    #[cfg(not(target_os = "windows"))]
     if modifiers.contains(KeyModifiers::CONTROL) && c == 'd' {
         if !app.is_confirm_delete() {
             app.set_popup_state(PopupState::ConfirmDelete);
@@ -310,8 +354,34 @@ fn handle_char(
         }
         return;
     }
+    #[cfg(target_os = "windows")]
+    if modifiers.contains(KeyModifiers::ALT) && c == 'd' {
+        if !app.is_confirm_delete() {
+            app.set_popup_state(PopupState::ConfirmDelete);
+            app.delete_target = if app.is_folder_list_popup() {
+                Some(crate::models::DeleteTarget::Folder)
+            } else {
+                Some(crate::models::DeleteTarget::Task)
+            };
+        }
+        return;
+    }
 
+
+    #[cfg(not(target_os = "windows"))]
     if modifiers.contains(KeyModifiers::CONTROL) && c == 'l' {
+        if app.is_folder_list_popup() {
+            app.close_popup();
+        } else {
+            app.set_popup_state(PopupState::FolderList);
+            app.folders = app.all_folders.clone();
+            app.folder_index = 0;
+        }
+        app.request_update();
+        return;
+    }
+    #[cfg(target_os = "windows")]
+    if modifiers.contains(KeyModifiers::ALT) && c == 'l' {
         if app.is_folder_list_popup() {
             app.close_popup();
         } else {

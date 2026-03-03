@@ -3,6 +3,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect, Alignment},
     style::{Color, Style},
     widgets::{Block, BorderType, Borders, Paragraph, List, ListItem, Clear, Table, Row, Cell},
+    text::Span
 };
 
 use crate::app::{App, truncate};
@@ -10,6 +11,8 @@ use crate::models::ViewMode;
 
 pub fn draw(f: &mut Frame, app: &mut App) {
     let size = f.area();
+
+    f.render_widget(Clear, size);
 
     let main_chunks = Layout::default()
         .direction(Direction::Horizontal)
@@ -28,11 +31,18 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         ViewMode::WithoutDate => "WithoutDate".to_string(),
     };
 
-    let inputwidet = Paragraph::new(app.task_name.as_str())
+    let input_text = if app.task_name.is_empty() {
+        Span::raw(" ")
+    } else {
+        Span::raw(app.task_name.as_str())
+    };
+
+    let inputwidet = Paragraph::new(input_text)
         .block(Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .title(view_title));
+            .title(view_title))
+        .style(Style::default().fg(Color::White));
 
     f.render_widget(inputwidet, left_chunks[0]);
 

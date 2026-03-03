@@ -9,7 +9,7 @@ mod backend;
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture},
     execute,
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode}
+    terminal::{ClearType, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode, Clear}
 };
 use ratatui::{Terminal, backend::CrosstermBackend};
 use std::io;
@@ -65,22 +65,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn setup_terminal() -> Result<Terminal<CrosstermBackend<std::io::Stdout>>, Box<dyn std::error::Error>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
+    execute!(stdout, Clear(ClearType::All))?;
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     Ok(Terminal::new(backend)?)
 }
 
 fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> Result<(), Box<dyn std::error::Error>> {
+    execute!(terminal.backend_mut(), Clear(ClearType::All))?;
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture)?;
     terminal.show_cursor()?;
     Ok(())
 }
 
-fn run_app(
-    terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
-    app: &mut App
-) -> Result<(), Box<dyn std::error::Error>> {
+fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     loop {
         if events::handle_events(app)? {
             break;
@@ -88,9 +87,17 @@ fn run_app(
 
         app.update();
 
-        terminal.draw(|f| ui::draw(f, app))?;
+        #[cfg(target_os = "windows")]
+        {
+            terminal.draw(|f| ui::draw(f, app))?;
+            std::thread::sleep(std::time::Duration::from_millis(32));
+        }
 
-        std::thread::sleep(std::time::Duration::from_millis(16));
+        #[cfg(not(target_os = "windows"))]
+        {
+            terminal.draw(|f| ui::draw(f, app))?;
+            std::thread::sleep(std::time::Duration::from_millis(16));
+        }
     }
     Ok(())
 }

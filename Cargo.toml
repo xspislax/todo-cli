@@ -1,0 +1,27 @@
+[package]
+name = "todo_cli"
+version = "0.1.0"
+edition = "2024"
+authors = ["t0niejaja"]
+description = "Terminal-based TODO application with calendar and task management"
+license = "MIT"
+repository = "https://github.com/xspislax/todo-cli.git"
+homepage = "https://github.com/xspislax/todo-cli.git"
+readme = "README.md"
+keywords = ["todo", "cli", "task-manager", "productivity", "rust"]
+categories = ["command-line-utilities"]
+
+
+[dependencies]
+crossterm = "0.29.0"
+ratatui = "0.30.0"
+toml = "0.8"
+serde = { version = "1.0", features = ["derive"] }
+dirs = "5.0"
+chrono = "0.4"
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
+strip = true

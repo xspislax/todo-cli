@@ -58,7 +58,7 @@ impl App {
             delete_target: None,
             move_target: None,
             view_mode: ViewMode::Normal,
-            special_views: vec!["Today".to_string(), "Next 7 days".to_string(), "Calendar".to_string()],
+            special_views: vec!["Today".to_string(), "Next 7 days".to_string(), "Calendar".to_string(), "Without date".to_string()],
             calendar: CalendarState::new(),
             config,
             needs_update: true,
@@ -110,6 +110,10 @@ impl App {
             }
             ViewMode::NextSevenDays => {
                 self.tasks = self.get_next_seven_days_tasks();
+                self.sort_tasks();
+            }
+            ViewMode::WithoutDate => {
+                self.tasks = self.get_tasks_without_date();
                 self.sort_tasks();
             }
         }
@@ -220,6 +224,24 @@ impl App {
         let today = Local::now().date_naive();
         let today_str = format!("{:02}.{:02}.{}", today.day(), today.month(), today.year());
         self.get_tasks_for_date(&today_str)
+    }
+    fn get_tasks_without_date(&self) -> Vec<Task> {
+        let mut tasks = Vec::new();
+
+        if let Ok((_, folders)) = backend::read_base_dir(&self.config) {
+            for folder in folders {
+                if let Ok(files) = backend::read_folder_files(&self.config, &folder) {
+                    for file in files {
+                        if let Ok(task) = backend::parse_task_file(&self.config, &folder, &file)
+                            && task.date.trim().is_empty() {
+                                tasks.push(task);
+                            }
+                    }
+                }
+            }
+        }
+
+        tasks
     }
 
     fn get_next_seven_days_tasks(&self) -> Vec<Task> {

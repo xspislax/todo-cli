@@ -25,6 +25,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         ViewMode::Normal => format!("Tasks - {}", app.selected_folder.as_deref().unwrap_or("")),
         ViewMode::Today => "Today's Tasks".to_string(),
         ViewMode::NextSevenDays => "Next 7 Days".to_string(),
+        ViewMode::WithoutDate => "WithoutDate".to_string(),
     };
 
     let inputwidet = Paragraph::new(app.task_name.as_str())
@@ -116,7 +117,7 @@ fn draw_tasks_table(f: &mut Frame, app: &mut App, area: Rect) {
             ],
             vec![" ", "Name", "Date", "Priority", "Description"]
         ),
-        ViewMode::Today | ViewMode::NextSevenDays => (
+        ViewMode::Today | ViewMode::NextSevenDays | ViewMode::WithoutDate => (
             vec![
                 Constraint::Length(5),
                 Constraint::Percentage(30),
@@ -144,7 +145,7 @@ fn draw_tasks_table(f: &mut Frame, app: &mut App, area: Rect) {
                         Cell::from(truncate(&task.description, 85)),
                     ])
                 }
-                ViewMode::Today | ViewMode::NextSevenDays => {
+                ViewMode::Today | ViewMode::NextSevenDays | ViewMode::WithoutDate => {
                     Row::new(vec![
                         Cell::from(checkbox),
                         Cell::from(truncate(&task.title, 35)),
@@ -172,7 +173,7 @@ fn draw_tasks_table(f: &mut Frame, app: &mut App, area: Rect) {
 }
 
 fn draw_special_views_popup(f: &mut Frame, app: &mut App, size: Rect) {
-    let popup_area = centered_rect(30, 12, size);
+    let popup_area = centered_rect(30, 13, size);
     f.render_widget(Clear, popup_area);
 
     let popup_block = Block::default()

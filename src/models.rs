@@ -13,6 +13,7 @@ pub enum ViewMode {
     Normal,
     Today,
     NextSevenDays,
+    WithoutDate,
 }
 
 #[derive(Clone)]

@@ -373,6 +373,10 @@ fn handle_enter(app: &mut App) {
                     app.calendar.current_date = Local::now().date_naive();
                     app.calendar.selected_date = Local::now().date_naive();
                 }
+                "Without date" => {
+                    app.view_mode = ViewMode::WithoutDate;
+                    app.calendar.show_day_tasks = false;
+                }
                 _ => {}
             }
             app.close_popup();

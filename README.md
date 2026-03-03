@@ -7,16 +7,16 @@ todoCLI is an advanced task manager that runs in the terminal, written in Rust. 
 
 ## Features
 
-- ✅ Create, edit, and delete tasks
-- 📁 Organize tasks in folders
-- 📅 Calendar view with tasks
-- 📆 "Today" and "Next 7 days" filters
-- ⚡ Task priorities (High, Medium, Low)
-- 📝 Task descriptions
-- ✅ Check off completed tasks
-- 🎨 Colorful terminal interface
-- ⌨️ Intuitive keyboard shortcuts
-- 🔧 Configuration via TOML file
+- Create, edit, and delete tasks
+- Organize tasks in folders
+- Calendar view with tasks
+- "Today" and "Next 7 days" filters
+- Task priorities (High, Medium, Low)
+- Task descriptions
+- Check off completed tasks
+- Colorful terminal interface
+- Intuitive keyboard shortcuts
+- Configuration via TOML file
 
 
 ## Installation

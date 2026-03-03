@@ -18,7 +18,6 @@ todoCLI is an advanced task manager that runs in the terminal, written in Rust. 
 - Intuitive keyboard shortcuts
 - Configuration via TOML file
 
-
 ## Installation
 
 ### From source code
@@ -26,13 +25,14 @@ todoCLI is an advanced task manager that runs in the terminal, written in Rust. 
 ```bash
 git clone https://github.com/xspislax/todo-cli.git
 cd todo-cli
-cargo build --release
-sudo cp target/release/todo-cli /usr/local/bin/
+cargo install --path .
 ```
 
 ## Configuration
+
 Currently, you can only configure the data path and default folder in the toml file in the `~/.config/todoCLI/config.toml` path. The `default_folder` will be created inside `data_path`
 Example config file:
+
 ```toml
 [features]
 data_path = "/Users/xavierspisla/Documents/todo_files"
@@ -40,6 +40,7 @@ default_folder = "INBOX"
 ```
 
 ## Keyboard shortcuts
+
 - `ctrl + l` to open and add task lists
 - `ctrl + v` to open calendars view
 - `ctrl + c` to move task/file to other directory
@@ -49,14 +50,17 @@ default_folder = "INBOX"
 - `arrows` used for navigation
 
 ## Dynamic input
+
 - The “!” symbol with the letters high, medium, and low adds priority to a task. There are two ways to add priority: using the full name `!high` or the first letter of the priority `!h`. Other options are medium (m) and low (l). If priority is not used, it is set to None by default.
 - The “@” symbol allows you to add a date. There are three ways to do this. The first is to write `@today` or `@tomorrow`. Another way is to write the day of the week in lowercase, e.g., `@monday`, and the task will be added for the coming Monday. Dates can also be added by counting the number of days from today, e.g., `@5` (in five days), or in the classic format d.m.y `@01.01.2026`.
 - The “.” character adds a description, e.g. `.Example description`
 
 ### Example of a complete task addition
+
 #### `Task name !h @today .Example description`
 
 ## How file looks
+
 ```md
 # Example task
 
@@ -70,19 +74,21 @@ Priority: high
 ```
 
 ## Screenshots
+
 Photos of some features
 
 ![Main Interface](screenshots/main-interface.png)
-*Main interface showing task list*
+_Main interface showing task list_
 
 ![Calendar View](screenshots/calendar-view.png)
-*Calendar view with tasks*
+_Calendar view with tasks_
 
 ![Calendar Task View](screenshots/calendar-task-view.png)
-*Tasks in after entering calendar*
+_Tasks in after entering calendar_
 
 ![Lists View](screenshots/lists-view.png)
-*Directory as lists*
+_Directory as lists_
 
 ### Disclaimer
+
 This application has only been tested on macOS Tahoe.

@@ -2,7 +2,7 @@ use crossterm::event::{self, Event, KeyCode, KeyModifiers};
 use std::time::Duration as StdDuration;
 use chrono::{Duration as ChronoDuration, Datelike};
 
-use crate::app::App;
+use crate::app::{App, PopupState};
 use crate::models::{DeleteTarget, MoveTarget, ViewMode};
 
 pub fn handle_events(app: &mut App) -> Result<bool, Box<dyn std::error::Error>> {
@@ -14,15 +14,15 @@ pub fn handle_events(app: &mut App) -> Result<bool, Box<dyn std::error::Error>> 
         return Ok(false);
     };
 
-    if app.confirm_delete {
+    if app.is_confirm_delete() {
         return Ok(handle_confirm_delete(app, key));
     }
 
     if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('v') {
-        app.show_special_views_popup = !app.show_special_views_popup;
-        if app.show_special_views_popup {
-            app.show_popup = false;
-            app.show_move_popup = false;
+        if app.is_special_views_popup() {
+            app.close_popup();
+        } else {
+            app.set_popup_state(PopupState::SpecialViews);
             app.folder_index = 0;
         }
         app.request_update();
@@ -41,7 +41,7 @@ fn handle_normal_mode(app: &mut App, key: event::KeyEvent) -> bool {
         return handle_calendar_mode(app, key);
     }
 
-    if app.show_move_popup {
+    if app.is_move_popup() {
         return handle_move_popup_mode(app, key);
     }
 
@@ -59,9 +59,8 @@ fn handle_normal_mode(app: &mut App, key: event::KeyEvent) -> bool {
             handle_down(app);
             false
         }
-        KeyCode::Right if !app.show_popup && !app.show_special_views_popup && !app.show_move_popup => {
-            app.show_file_preview = true;
-            app.request_update();
+        KeyCode::Right if !app.is_popup_active() => {
+            app.set_popup_state(PopupState::FilePreview);
             false
         }
         KeyCode::Backspace => {
@@ -79,9 +78,7 @@ fn handle_normal_mode(app: &mut App, key: event::KeyEvent) -> bool {
 fn handle_move_popup_mode(app: &mut App, key: event::KeyEvent) -> bool {
     match key.code {
         KeyCode::Esc => {
-            app.show_move_popup = false;
-            app.move_target = None;
-            app.request_update();
+            app.close_popup();
             false
         }
         KeyCode::Enter => {
@@ -89,10 +86,7 @@ fn handle_move_popup_mode(app: &mut App, key: event::KeyEvent) -> bool {
             if let Some(folder) = folder_to_move {
                 let _ = app.move_task(&folder);
             }
-            app.show_move_popup = false;
-            app.move_target = None;
-            app.folder_index = 0;
-            app.request_update();
+            app.close_popup();
             false
         }
         KeyCode::Up => {
@@ -128,7 +122,7 @@ fn handle_calendar_mode(app: &mut App, key: event::KeyEvent) -> bool {
             false
         }
         KeyCode::Left => {
-            app.calendar.selected_date = app.calendar.selected_date - ChronoDuration::days(1);
+            app.calendar.selected_date -= ChronoDuration::days(1);
             if app.calendar.selected_date.month() != app.calendar.current_date.month() {
                 app.calendar.current_date = app.calendar.selected_date;
             }
@@ -136,7 +130,7 @@ fn handle_calendar_mode(app: &mut App, key: event::KeyEvent) -> bool {
             false
         }
         KeyCode::Right => {
-            app.calendar.selected_date = app.calendar.selected_date + ChronoDuration::days(1);
+            app.calendar.selected_date += ChronoDuration::days(1);
             if app.calendar.selected_date.month() != app.calendar.current_date.month() {
                 app.calendar.current_date = app.calendar.selected_date;
             }
@@ -144,7 +138,7 @@ fn handle_calendar_mode(app: &mut App, key: event::KeyEvent) -> bool {
             false
         }
         KeyCode::Up => {
-            app.calendar.selected_date = app.calendar.selected_date - ChronoDuration::days(7);
+            app.calendar.selected_date -= ChronoDuration::days(7);
             if app.calendar.selected_date.month() != app.calendar.current_date.month() {
                 app.calendar.current_date = app.calendar.selected_date;
             }
@@ -152,7 +146,7 @@ fn handle_calendar_mode(app: &mut App, key: event::KeyEvent) -> bool {
             false
         }
         KeyCode::Down => {
-            app.calendar.selected_date = app.calendar.selected_date + ChronoDuration::days(7);
+            app.calendar.selected_date += ChronoDuration::days(7);
             if app.calendar.selected_date.month() != app.calendar.current_date.month() {
                 app.calendar.current_date = app.calendar.selected_date;
             }
@@ -186,8 +180,8 @@ fn handle_calendar_day_tasks_mode(app: &mut App, key: event::KeyEvent) -> bool {
             false
         }
         KeyCode::Enter => {
-            if app.task_name.is_empty() && !app.calendar.day_tasks.is_empty() {
-                if let Some(task) = app.calendar.day_tasks.get(app.file_index) {
+            if app.task_name.is_empty() && !app.calendar.day_tasks.is_empty()
+                && let Some(task) = app.calendar.day_tasks.get(app.file_index) {
                     let new_checked = !task.checked;
                     let _ = crate::backend::update_task_checked(&app.config, &task.folder, &task.filename, new_checked);
 
@@ -200,7 +194,6 @@ fn handle_calendar_day_tasks_mode(app: &mut App, key: event::KeyEvent) -> bool {
                     app.sort_tasks_for_calendar();
                     app.request_update();
                 }
-            }
             false
         }
         KeyCode::Char(' ') => {
@@ -221,7 +214,7 @@ fn handle_calendar_day_tasks_mode(app: &mut App, key: event::KeyEvent) -> bool {
         }
         KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             if !app.calendar.day_tasks.is_empty() {
-                app.confirm_delete = true;
+                app.set_popup_state(PopupState::ConfirmDelete);
                 app.delete_target = Some(crate::models::DeleteTarget::Task);
                 app.request_update();
             }
@@ -237,22 +230,12 @@ fn handle_up(app: &mut App) {
             app.file_index -= 1;
             app.request_update();
         }
-    } else if app.show_popup {
-        if app.folder_index > 0 {
-            app.folder_index -= 1;
-            app.request_update();
-        }
-    } else if app.show_special_views_popup {
-        if app.folder_index > 0 {
-            app.folder_index -= 1;
-            app.request_update();
-        }
-    } else if app.show_move_popup {
-        if app.folder_index > 0 {
-            app.folder_index -= 1;
-            app.request_update();
-        }
-    } else if app.file_index > 0 {
+    }
+    else if app.is_folder_list_popup() || app.is_special_views_popup() || app.is_move_popup() && app.folder_index > 0 {
+        app.folder_index -= 1;
+        app.request_update();
+    }
+    else if app.file_index > 0 {
         app.file_index -= 1;
         app.request_update();
     }
@@ -264,17 +247,17 @@ fn handle_down(app: &mut App) {
             app.file_index += 1;
             app.request_update();
         }
-    } else if app.show_popup {
+    } else if app.is_folder_list_popup() {
         if app.folder_index + 1 < app.all_folders.len() {
             app.folder_index += 1;
             app.request_update();
         }
-    } else if app.show_special_views_popup {
+    } else if app.is_special_views_popup() {
         if app.folder_index + 1 < app.special_views.len() {
             app.folder_index += 1;
             app.request_update();
         }
-    } else if app.show_move_popup {
+    } else if app.is_move_popup() {
         if app.folder_index + 1 < app.available_folders.len() {
             app.folder_index += 1;
             app.request_update();
@@ -286,10 +269,10 @@ fn handle_down(app: &mut App) {
 }
 
 fn handle_backspace(app: &mut App) {
-    if app.show_popup {
+    if app.is_folder_list_popup() {
         app.folder_name.pop();
         app.request_update();
-    } else if !app.show_special_views_popup && matches!(app.view_mode, ViewMode::Normal) {
+    } else if !app.is_special_views_popup() && matches!(app.view_mode, ViewMode::Normal) {
         app.task_name.pop();
         app.request_update();
     }
@@ -302,10 +285,9 @@ fn handle_char(
 ) {
     if modifiers.contains(KeyModifiers::CONTROL) && c == 'c' {
         if !app.tasks.is_empty() && matches!(app.view_mode, ViewMode::Normal) {
-            app.show_move_popup = true;
+            app.set_popup_state(PopupState::MoveTask);
             app.move_target = Some(MoveTarget::Task);
             app.folder_index = 0;
-            app.request_update();
         }
         return;
     }
@@ -318,35 +300,34 @@ fn handle_char(
     }
 
     if modifiers.contains(KeyModifiers::CONTROL) && c == 'd' {
-        if !app.confirm_delete {
-            app.confirm_delete = true;
-            app.delete_target = if app.show_popup {
+        if !app.is_confirm_delete() {
+            app.set_popup_state(PopupState::ConfirmDelete);
+            app.delete_target = if app.is_folder_list_popup() {
                 Some(crate::models::DeleteTarget::Folder)
             } else {
                 Some(crate::models::DeleteTarget::Task)
             };
-            app.request_update();
         }
         return;
     }
 
     if modifiers.contains(KeyModifiers::CONTROL) && c == 'l' {
-        app.show_popup = !app.show_popup;
-        if app.show_popup {
+        if app.is_folder_list_popup() {
+            app.close_popup();
+        } else {
+            app.set_popup_state(PopupState::FolderList);
             app.folders = app.all_folders.clone();
-            app.show_special_views_popup = false;
-            app.show_move_popup = false;
             app.folder_index = 0;
         }
         app.request_update();
         return;
     }
 
-    if app.show_special_views_popup {
+    if app.is_special_views_popup() {
         return;
     }
 
-    if app.show_popup {
+    if app.is_folder_list_popup() {
         app.folder_name.push(c);
         app.request_update();
     } else if matches!(app.view_mode, ViewMode::Normal) {
@@ -356,24 +337,11 @@ fn handle_char(
 }
 
 fn handle_escape(app: &mut App) -> bool {
-    if app.show_file_preview {
-        app.show_file_preview = false;
-        app.request_update();
+    if app.is_file_preview() || app.is_move_popup() || app.is_folder_list_popup() || app.is_special_views_popup() {
+        app.close_popup();
         false
-    } else if app.show_move_popup {
-        app.show_move_popup = false;
-        app.move_target = None;
-        app.request_update();
-        false
-    } else if app.show_popup {
-        app.show_popup = false;
-        app.request_update();
-        false
-    } else if app.show_special_views_popup {
-        app.show_special_views_popup = false;
-        app.request_update();
-        false
-    } else if !matches!(app.view_mode, ViewMode::Normal) {
+    }
+    else if !matches!(app.view_mode, ViewMode::Normal) {
         app.view_mode = ViewMode::Normal;
         app.file_index = 0;
         app.request_update();
@@ -388,7 +356,7 @@ fn handle_enter(app: &mut App) {
     use std::fs;
     use std::path::Path;
 
-    if app.show_special_views_popup {
+    if app.is_special_views_popup() {
         if let Some(view) = app.special_views.get(app.folder_index) {
             match view.as_str() {
                 "Today" => {
@@ -407,11 +375,11 @@ fn handle_enter(app: &mut App) {
                 }
                 _ => {}
             }
-            app.show_special_views_popup = false;
+            app.close_popup();
             app.file_index = 0;
             app.request_update();
         }
-    } else if app.show_popup {
+    } else if app.is_folder_list_popup() {
         if !app.folder_name.is_empty() {
             let new_folder = app.folder_name.trim().to_string();
             if !new_folder.is_empty() {
@@ -425,7 +393,7 @@ fn handle_enter(app: &mut App) {
         } else if let Some(folder) = app.all_folders.get(app.folder_index) {
             app.selected_folder = Some(folder.clone());
             app.view_mode = ViewMode::Normal;
-            app.show_popup = false;
+            app.close_popup();
             app.request_update();
         }
     } else if app.calendar.show_calendar && !app.calendar.show_day_tasks {
@@ -440,18 +408,14 @@ fn handle_enter(app: &mut App) {
         app.tasks = app.get_tasks_for_date(&date_str);
         app.file_index = 0;
         app.request_update();
-    } else {
-        if app.task_name.is_empty() {
-            if !app.tasks.is_empty() {
-                app.toggle_selected_task();
-            }
-        } else {
-            if matches!(app.view_mode, ViewMode::Normal) {
-                app.create_task();
-                app.task_name.clear();
-                app.request_update();
-            }
+    } else if app.task_name.is_empty() {
+        if !app.tasks.is_empty() {
+            app.toggle_selected_task();
         }
+    } else if matches!(app.view_mode, ViewMode::Normal) {
+        app.create_task();
+        app.task_name.clear();
+        app.request_update();
     }
 }
 
@@ -461,29 +425,19 @@ fn handle_confirm_delete(app: &mut App, key: event::KeyEvent) -> bool {
             if app.calendar.show_day_tasks {
                 app.delete_selected_task_from_calendar();
             } else {
-                confirm_delete(app);
+                match app.delete_target {
+                    Some(DeleteTarget::Task) => app.delete_selected_task(),
+                    Some(DeleteTarget::Folder) => app.delete_selected_folder(),
+                    None => {}
+                }
             }
-            app.confirm_delete = false;
-            app.delete_target = None;
-            app.request_update();
+            app.close_popup();
             false
         }
         KeyCode::Char('n') | KeyCode::Esc => {
-            app.confirm_delete = false;
-            app.delete_target = None;
-            app.request_update();
+            app.close_popup();
             false
         }
         _ => false,
     }
-}
-
-fn confirm_delete(app: &mut App) {
-    match app.delete_target {
-        Some(DeleteTarget::Task) => app.delete_selected_task(),
-        Some(DeleteTarget::Folder) => app.delete_selected_folder(),
-        None => {}
-    }
-    app.confirm_delete = false;
-    app.delete_target = None;
 }

@@ -6,6 +6,16 @@ use crate::models::{ViewMode, CalendarState, Task, DeleteTarget, MoveTarget};
 use crate::config::Config;
 use crate::backend;
 
+#[derive(Clone, PartialEq)]
+pub enum PopupState {
+    None,
+    FolderList,
+    SpecialViews,
+    MoveTask,
+    FilePreview,
+    ConfirmDelete,
+}
+
 pub struct App {
     pub task_name: String,
     pub tasks: Vec<Task>,
@@ -15,15 +25,11 @@ pub struct App {
     pub folders: Vec<String>,
     pub selected_folder: Option<String>,
     pub folder_index: usize,
-    pub show_popup: bool,
-    pub show_special_views_popup: bool,
-    pub show_file_preview: bool,
-    pub show_move_popup: bool,
+    pub popup_state: PopupState,
     pub folder_state: ListState,
     pub file_index: usize,
     pub table_state: TableState,
     pub file_content: String,
-    pub confirm_delete: bool,
     pub delete_target: Option<DeleteTarget>,
     pub move_target: Option<MoveTarget>,
     pub view_mode: ViewMode,
@@ -34,7 +40,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(config: Config) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn new(config: Config) -> Self {
         let mut app = Self {
             task_name: String::new(),
             tasks: Vec::new(),
@@ -44,15 +50,11 @@ impl App {
             folders: Vec::new(),
             selected_folder: Some(config.features.default_folder.clone()),
             folder_index: 0,
-            show_popup: false,
-            show_special_views_popup: false,
-            show_file_preview: false,
-            show_move_popup: false,
+            popup_state: PopupState::None,
             folder_state: ListState::default(),
             file_index: 0,
             table_state: TableState::default(),
             file_content: String::new(),
-            confirm_delete: false,
             delete_target: None,
             move_target: None,
             view_mode: ViewMode::Normal,
@@ -63,7 +65,7 @@ impl App {
         };
 
         app.update();
-        Ok(app)
+        app
     }
 
     pub fn update(&mut self) {
@@ -77,7 +79,7 @@ impl App {
         if let Ok((_, folders)) = backend::read_base_dir(&self.config) {
             self.all_folders = folders.clone();
 
-            if self.show_popup {
+            if self.popup_state == PopupState::FolderList {
                 self.folders = self.all_folders.clone();
             }
 
@@ -166,7 +168,7 @@ impl App {
                 {
                     return date_a.cmp(&date_b);
                 }
-            std::cmp::Ordering::Equal
+                std::cmp::Ordering::Equal
             } else if !a.checked && b.checked {
                 std::cmp::Ordering::Less
             } else {
@@ -338,6 +340,7 @@ impl App {
             self.request_update();
         }
     }
+
     pub fn delete_selected_task_from_calendar(&mut self) {
         if let Some(task) = self.calendar.day_tasks.get(self.file_index) {
             let _ = backend::delete_task(&self.config, &task.folder, &task.filename);
@@ -372,6 +375,42 @@ impl App {
                 self.folder_index = 0;
                 self.request_update();
         }
+    }
+
+    pub fn is_popup_active(&self) -> bool {
+        self.popup_state != PopupState::None
+    }
+
+    pub fn is_confirm_delete(&self) -> bool {
+        self.popup_state == PopupState::ConfirmDelete
+    }
+
+    pub fn is_folder_list_popup(&self) -> bool {
+        self.popup_state == PopupState::FolderList
+    }
+
+    pub fn is_move_popup(&self) -> bool {
+        self.popup_state == PopupState::MoveTask
+    }
+
+    pub fn is_special_views_popup(&self) -> bool {
+        self.popup_state == PopupState::SpecialViews
+    }
+
+    pub fn is_file_preview(&self) -> bool {
+        self.popup_state == PopupState::FilePreview
+    }
+
+    pub fn set_popup_state(&mut self, state: PopupState) {
+        self.popup_state = state;
+        self.request_update();
+    }
+
+    pub fn close_popup(&mut self) {
+        self.popup_state = PopupState::None;
+        self.delete_target = None;
+        self.move_target = None;
+        self.request_update();
     }
 }
 

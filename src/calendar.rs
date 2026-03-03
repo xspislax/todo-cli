@@ -54,7 +54,7 @@ pub fn draw_calendar_popup(f: &mut Frame, app: &mut App, size: Rect) {
 
     let weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     let mut header_cells = Vec::new();
-    for weekday in weekdays.iter() {
+    for weekday in &weekdays {
         header_cells.push(Cell::from(*weekday).style(Style::default().fg(Color::Yellow)));
     }
     let header_row = Row::new(header_cells)
@@ -89,7 +89,7 @@ pub fn draw_calendar_popup(f: &mut Frame, app: &mut App, size: Rect) {
         let day_str = if has_tasks {
             format!("{}{}", day, "•")
         } else {
-            format!("{:2}", day)
+            format!("{day:2}")
         };
 
         let mut cell_style = Style::default();
@@ -132,7 +132,7 @@ pub fn draw_calendar_popup(f: &mut Frame, app: &mut App, size: Rect) {
 }
 
 pub fn draw_calendar_day_tasks_popup(f: &mut Frame, app: &mut App, size: Rect) {
-    let popup_area = centered_rect(80, 80, size);
+    let popup_area = centered_rect(70, 70, size);
     f.render_widget(Clear, popup_area);
 
     let title = format!("Tasks for {}", app.calendar.selected_date.format("%d.%m.%Y"));

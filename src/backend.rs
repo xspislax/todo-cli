@@ -3,6 +3,7 @@ use std::io;
 use std::path::Path;
 use crate::models::{Task, Priority};
 use crate::config::Config;
+use std::fmt::Write;
 
 pub fn read_base_dir(config: &Config) -> io::Result<(Vec<String>, Vec<String>)> {
     let data_path = Path::new(&config.features.data_path);
@@ -68,13 +69,11 @@ pub fn zapisz_zadanie(
     date: Option<&str>
 ) -> std::io::Result<()> {
     let filename = task_title.replace(' ', "_");
-    let filepath_str = config.get_full_path(folder, &format!("{}.md", filename));
+    let filepath_str = config.get_full_path(folder, &format!("{filename}.md"));
     let filepath = Path::new(&filepath_str);
 
-    if let Some(parent) = filepath.parent() {
-        if !parent.exists() {
+    if let Some(parent) = filepath.parent() && !parent.exists() {
             fs::create_dir_all(parent)?;
-        }
     }
 
     let priority_text = match priority {
@@ -85,7 +84,6 @@ pub fn zapisz_zadanie(
     };
 
     let mut content = String::new();
-    use std::fmt::Write;
     write!(content, "# {task_title}\n\n").unwrap();
     write!(content, "Checked: false\n\n").unwrap();
 
@@ -97,7 +95,7 @@ pub fn zapisz_zadanie(
         write!(content, "Description: {filedata}\n\n").unwrap();
     }
 
-    write!(content, "Priority: {priority_text}\n").unwrap();
+    writeln!(content, "Priority: {priority_text}\n").unwrap();
 
     fs::write(filepath, content)?;
     Ok(())
@@ -114,7 +112,7 @@ pub fn update_task_checked(config: &Config, folder: &str, filename: &str, checke
 
     for line in content.lines() {
         if line.starts_with("Checked:") {
-            new_content.push_str(&format!("Checked: {}\n", checked));
+            writeln!(new_content, "Checked: {checked}").unwrap();
             checked_line_updated = true;
         } else {
             new_content.push_str(line);
@@ -123,7 +121,7 @@ pub fn update_task_checked(config: &Config, folder: &str, filename: &str, checke
     }
 
     if !checked_line_updated {
-        new_content = format!("Checked: {}\n{}", checked, content);
+        new_content = format!("Checked: {checked}\n{content}");
     }
 
     fs::write(filepath, new_content)?;
@@ -221,7 +219,7 @@ pub fn parse_task_input(input: &str) -> (String, String, Option<Priority>, Optio
         ("!l", Priority::Low),
     ];
 
-    for (flag, prio) in priority_flags.iter() {
+    for (flag, prio) in &priority_flags {
         if priority_processed.contains(flag) {
             priority = Some(*prio);
             priority_processed = priority_processed.replace(flag, "");

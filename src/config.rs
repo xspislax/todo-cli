@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use dirs;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Config {
@@ -86,11 +85,11 @@ impl Config {
 
     pub fn get_full_path(&self, folder: &str, filename: &str) -> String {
         let clean_data_path = self.features.data_path.trim_end_matches('/').trim_end_matches('\\');
-        format!("{}/{}/{}", clean_data_path, folder, filename)
+        format!("{clean_data_path}/{folder}/{filename}")
     }
 
     pub fn get_folder_path(&self, folder: &str) -> String {
         let clean_data_path = self.features.data_path.trim_end_matches('/').trim_end_matches('\\');
-        format!("{}/{}", clean_data_path, folder)
+        format!("{clean_data_path}/{folder}")
     }
 }

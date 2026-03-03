@@ -18,11 +18,8 @@ use crate::app::App;
 use crate::config::Config;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-
     let config = match Config::load() {
-        Ok(c) => {
-            c
-        }
+        Ok(c) => c,
         Err(e) => {
             eprintln!("✗ Error loading configuration: {e}");
             eprintln!("  Using default configuration...");
@@ -45,7 +42,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(1);
     }
 
-
     let mut terminal = match setup_terminal() {
         Ok(t) => t,
         Err(e) => {
@@ -54,15 +50,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    let mut app = match App::new(config) {
-        Ok(a) => {
-            a
-        }
-        Err(e) => {
-            eprintln!("✗ Error creating app: {e}");
-            std::process::exit(1);
-        }
-    };
+    let mut app = App::new(config);
 
     let result = run_app(&mut terminal, &mut app);
 
@@ -99,6 +87,7 @@ fn run_app(
         }
 
         app.update();
+
         terminal.draw(|f| ui::draw(f, app))?;
 
         std::thread::sleep(std::time::Duration::from_millis(16));

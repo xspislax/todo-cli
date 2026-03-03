@@ -42,16 +42,23 @@ pub fn draw(f: &mut Frame, app: &mut App) {
 
     draw_tasks_table(f, app, content[0]);
 
-    if app.show_popup {
-        draw_popup(f, app, size);
-    }
-
-    if app.show_move_popup {
-        draw_move_popup(f, app, size);
-    }
-
-    if app.show_special_views_popup {
-        draw_special_views_popup(f, app, size);
+    match app.popup_state {
+        crate::app::PopupState::FolderList => {
+            draw_popup(f, app, size);
+        }
+        crate::app::PopupState::MoveTask => {
+            draw_move_popup(f, app, size);
+        }
+        crate::app::PopupState::SpecialViews => {
+            draw_special_views_popup(f, app, size);
+        }
+        crate::app::PopupState::FilePreview => {
+            draw_file_preview(f, app, size);
+        }
+        crate::app::PopupState::ConfirmDelete => {
+            draw_popup_delete(f, size);
+        }
+        crate::app::PopupState::None => {}
     }
 
     if app.calendar.show_calendar {
@@ -60,14 +67,6 @@ pub fn draw(f: &mut Frame, app: &mut App) {
 
     if app.calendar.show_day_tasks {
         crate::calendar::draw_calendar_day_tasks_popup(f, app, size);
-    }
-
-    if app.show_file_preview {
-        draw_file_preview(f, app, size);
-    }
-
-    if app.confirm_delete {
-        draw_popup_delete(f, size);
     }
 }
 
@@ -92,7 +91,7 @@ fn draw_move_popup(f: &mut Frame, app: &mut App, size: Rect) {
 
     let folder_items: Vec<ListItem> = app.available_folders
         .iter()
-        .map(|d| ListItem::new(format!("📁 {d}")))
+        .map(|d| ListItem::new(d.clone()))
         .collect();
 
     let folder_list = List::new(folder_items)
@@ -194,13 +193,7 @@ fn draw_special_views_popup(f: &mut Frame, app: &mut App, size: Rect) {
     let view_items: Vec<ListItem> = app.special_views
         .iter()
         .map(|view| {
-            let icon = match view.as_str() {
-                "Today" => "📅 ",
-                "Next 7 days" => "📆 ",
-                "Calendar" => "📅 ",
-                _ => "📌 ",
-            };
-            ListItem::new(format!("{}{}", icon, view))
+            ListItem::new(view.clone())
         })
         .collect();
 
@@ -257,7 +250,7 @@ fn draw_popup(f: &mut Frame, app: &mut App, size: Rect) {
 
     let folder_items: Vec<ListItem> = app.all_folders
         .iter()
-        .map(|d| ListItem::new(format!("📁 {d}")))
+        .map(|d| ListItem::new(d.clone()))
         .collect();
 
     let folder_list = List::new(folder_items)

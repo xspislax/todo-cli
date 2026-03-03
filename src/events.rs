@@ -1,4 +1,4 @@
-use crossterm::event::{self, Event, KeyCode, KeyModifiers};
+use crossterm::event::{self, Event, KeyCode, KeyModifiers, KeyEventKind};
 use std::time::Duration as StdDuration;
 use chrono::{Duration as ChronoDuration, Datelike};
 
@@ -14,34 +14,99 @@ pub fn handle_events(app: &mut App) -> Result<bool, Box<dyn std::error::Error>> 
         return Ok(false);
     };
 
+    if key.kind == KeyEventKind::Release {
+        return Ok(false);
+    }
+
     if app.is_confirm_delete() {
         return Ok(handle_confirm_delete(app, key));
     }
 
-    #[cfg(not(target_os = "windows"))]
-    if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('v') {
-        if app.is_special_views_popup() {
-            app.close_popup();
-        } else {
-            app.set_popup_state(PopupState::SpecialViews);
-            app.folder_index = 0;
-        }
-        app.request_update();
-        return Ok(false);
-    }
-    #[cfg(target_os = "windows")]
-    if key.modifiers.contains(KeyModifiers::ALT) && key.code == KeyCode::Char('v') {
-        if app.is_special_views_popup() {
-            app.close_popup();
-        } else {
-            app.set_popup_state(PopupState::SpecialViews);
-            app.folder_index = 0;
-        }
-        app.request_update();
+    if handle_shortcuts(app, key) {
         return Ok(false);
     }
 
     Ok(handle_normal_mode(app, key))
+}
+
+fn handle_shortcuts(app: &mut App, key: event::KeyEvent) -> bool {
+    if key.modifiers.contains(KeyModifiers::CONTROL) {
+        match key.code {
+            KeyCode::Char('v') => {
+                if app.is_special_views_popup() {
+                    app.close_popup();
+                } else {
+                    app.set_popup_state(PopupState::SpecialViews);
+                    app.folder_index = 0;
+                }
+                app.request_update();
+                return true;
+            }
+            KeyCode::Char('l') => {
+                if app.is_folder_list_popup() {
+                    app.close_popup();
+                } else {
+                    app.set_popup_state(PopupState::FolderList);
+                    app.folders = app.all_folders.clone();
+                    app.folder_index = 0;
+                }
+                app.request_update();
+                return true;
+            }
+            KeyCode::Char('f') => {
+                if !app.tasks.is_empty() {
+                    let _ = app.open_file_in_editor();
+                }
+                return true;
+            }
+            KeyCode::Char('d') => {
+                if !app.is_confirm_delete() {
+                    app.set_popup_state(PopupState::ConfirmDelete);
+                    app.delete_target = if app.is_folder_list_popup() {
+                        Some(crate::models::DeleteTarget::Folder)
+                    } else {
+                        Some(crate::models::DeleteTarget::Task)
+                    };
+                    app.request_update();
+                }
+                return true;
+            }
+            _ => {}
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        if key.modifiers.contains(KeyModifiers::ALT) {
+            match key.code {
+                KeyCode::Char('c') => {
+                    if !app.tasks.is_empty() && matches!(app.view_mode, ViewMode::Normal) {
+                        app.set_popup_state(PopupState::MoveTask);
+                        app.move_target = Some(MoveTarget::Task);
+                        app.folder_index = 0;
+                        app.request_update();
+                    }
+                    return true;
+                }
+                _ => {}
+            }
+        }
+    }
+
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    {
+        if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c') {
+            if !app.tasks.is_empty() && matches!(app.view_mode, ViewMode::Normal) {
+                app.set_popup_state(PopupState::MoveTask);
+                app.move_target = Some(MoveTarget::Task);
+                app.folder_index = 0;
+                app.request_update();
+            }
+            return true;
+        }
+    }
+
+    false
 }
 
 fn handle_normal_mode(app: &mut App, key: event::KeyEvent) -> bool {
@@ -73,6 +138,7 @@ fn handle_normal_mode(app: &mut App, key: event::KeyEvent) -> bool {
         }
         KeyCode::Right if !app.is_popup_active() => {
             app.set_popup_state(PopupState::FilePreview);
+            app.request_update();
             false
         }
         KeyCode::Backspace => {
@@ -80,12 +146,13 @@ fn handle_normal_mode(app: &mut App, key: event::KeyEvent) -> bool {
             false
         }
         KeyCode::Char(c) => {
-            handle_char(app, key.modifiers, c);
+            handle_char(app, c);
             false
         }
         _ => false,
     }
 }
+
 
 fn handle_move_popup_mode(app: &mut App, key: event::KeyEvent) -> bool {
     match key.code {
@@ -224,17 +291,7 @@ fn handle_calendar_day_tasks_mode(app: &mut App, key: event::KeyEvent) -> bool {
             }
             false
         }
-        #[cfg(not(target_os = "windows"))]
         KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-            if !app.calendar.day_tasks.is_empty() {
-                app.set_popup_state(PopupState::ConfirmDelete);
-                app.delete_target = Some(crate::models::DeleteTarget::Task);
-                app.request_update();
-            }
-            false
-        }
-        #[cfg(target_os = "windows")]
-        KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::ALT) => {
             if !app.calendar.day_tasks.is_empty() {
                 app.set_popup_state(PopupState::ConfirmDelete);
                 app.delete_target = Some(crate::models::DeleteTarget::Task);
@@ -253,7 +310,7 @@ fn handle_up(app: &mut App) {
             app.request_update();
         }
     }
-    else if app.is_folder_list_popup() || app.is_special_views_popup() || app.is_move_popup() && app.folder_index > 0 {
+    else if (app.is_folder_list_popup() || app.is_special_views_popup() || app.is_move_popup()) && app.folder_index > 0 {
         app.folder_index -= 1;
         app.request_update();
     }
@@ -292,104 +349,18 @@ fn handle_down(app: &mut App) {
 
 fn handle_backspace(app: &mut App) {
     if app.is_folder_list_popup() {
-        app.folder_name.pop();
-        app.request_update();
-    } else if !app.is_special_views_popup() && matches!(app.view_mode, ViewMode::Normal) {
-        app.task_name.pop();
-        app.request_update();
+        if !app.folder_name.is_empty() {
+            app.folder_name.pop();
+            app.request_update();
+        }
+    } else if !app.is_special_views_popup() && matches!(app.view_mode, ViewMode::Normal) && !app.task_name.is_empty() {
+            app.task_name.pop();
+            app.request_update();
     }
 }
 
-fn handle_char(
-    app: &mut App,
-    modifiers: KeyModifiers,
-    c: char,
-) {
-
-    #[cfg(not(target_os = "windows"))]
-    if modifiers.contains(KeyModifiers::CONTROL) && c == 'c' {
-        if !app.tasks.is_empty() && matches!(app.view_mode, ViewMode::Normal) {
-            app.set_popup_state(PopupState::MoveTask);
-            app.move_target = Some(MoveTarget::Task);
-            app.folder_index = 0;
-        }
-        return;
-    }
-    #[cfg(target_os = "windows")]
-    if modifiers.contains(KeyModifiers::ALT) && c == 'c' {
-        if !app.tasks.is_empty() && matches!(app.view_mode, ViewMode::Normal) {
-            app.set_popup_state(PopupState::MoveTask);
-            app.move_target = Some(MoveTarget::Task);
-            app.folder_index = 0;
-        }
-        return;
-    }
-
-
-    #[cfg(not(target_os = "windows"))]
-    if modifiers.contains(KeyModifiers::CONTROL) && c == 'f' {
-        if !app.tasks.is_empty() {
-            let _ = app.open_file_in_editor();
-        }
-        return;
-    }
-    #[cfg(target_os = "windows")]
-    if modifiers.contains(KeyModifiers::ALT) && c == 'f' {
-        if !app.tasks.is_empty() {
-            let _ = app.open_file_in_editor();
-        }
-        return;
-    }
-
-
-    #[cfg(not(target_os = "windows"))]
-    if modifiers.contains(KeyModifiers::CONTROL) && c == 'd' {
-        if !app.is_confirm_delete() {
-            app.set_popup_state(PopupState::ConfirmDelete);
-            app.delete_target = if app.is_folder_list_popup() {
-                Some(crate::models::DeleteTarget::Folder)
-            } else {
-                Some(crate::models::DeleteTarget::Task)
-            };
-        }
-        return;
-    }
-    #[cfg(target_os = "windows")]
-    if modifiers.contains(KeyModifiers::ALT) && c == 'd' {
-        if !app.is_confirm_delete() {
-            app.set_popup_state(PopupState::ConfirmDelete);
-            app.delete_target = if app.is_folder_list_popup() {
-                Some(crate::models::DeleteTarget::Folder)
-            } else {
-                Some(crate::models::DeleteTarget::Task)
-            };
-        }
-        return;
-    }
-
-
-    #[cfg(not(target_os = "windows"))]
-    if modifiers.contains(KeyModifiers::CONTROL) && c == 'l' {
-        if app.is_folder_list_popup() {
-            app.close_popup();
-        } else {
-            app.set_popup_state(PopupState::FolderList);
-            app.folders = app.all_folders.clone();
-            app.folder_index = 0;
-        }
-        app.request_update();
-        return;
-    }
-    #[cfg(target_os = "windows")]
-    if modifiers.contains(KeyModifiers::ALT) && c == 'l' {
-        if app.is_folder_list_popup() {
-            app.close_popup();
-        } else {
-            app.set_popup_state(PopupState::FolderList);
-            app.folders = app.all_folders.clone();
-            app.folder_index = 0;
-        }
-        app.request_update();
+fn handle_char(app: &mut App, c: char) {
+    if c.is_control() {
         return;
     }
 
@@ -398,11 +369,9 @@ fn handle_char(
     }
 
     if app.is_folder_list_popup() {
-        app.folder_name.push(c);
-        app.request_update();
+        app.handle_folder_name_input(c);
     } else if matches!(app.view_mode, ViewMode::Normal) {
-        app.task_name.push(c);
-        app.request_update();
+        app.handle_char_input(c);
     }
 }
 

@@ -1,6 +1,7 @@
 use ratatui::widgets::{ListState, TableState};
 use chrono::{Local, Duration, NaiveDate, Datelike};
 use std::fs;
+use std::time::Instant;
 
 use crate::models::{ViewMode, CalendarState, Task, DeleteTarget, MoveTarget};
 use crate::config::Config;
@@ -37,6 +38,13 @@ pub struct App {
     pub calendar: CalendarState,
     pub config: Config,
     pub needs_update: bool,
+
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
+    last_char: Option<char>,
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
+    last_char_time: Instant,
+    #[cfg(target_os = "windows")]
+    key_buffer: Vec<char>,
 }
 
 impl App {
@@ -62,6 +70,13 @@ impl App {
             calendar: CalendarState::new(),
             config,
             needs_update: true,
+
+            #[cfg(any(target_os = "windows", target_os = "macos"))]
+            last_char: None,
+            #[cfg(any(target_os = "windows", target_os = "macos"))]
+            last_char_time: Instant::now(),
+            #[cfg(target_os = "windows")]
+            key_buffer: Vec::new(),
         };
 
         app.update();
@@ -225,6 +240,7 @@ impl App {
         let today_str = format!("{:02}.{:02}.{}", today.day(), today.month(), today.year());
         self.get_tasks_for_date(&today_str)
     }
+
     fn get_tasks_without_date(&self) -> Vec<Task> {
         let mut tasks = Vec::new();
 
@@ -309,6 +325,7 @@ impl App {
         }
     }
 
+    #[allow(dead_code)]
     pub fn open_file_in_editor(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         if let Some(task) = self.tasks.get(self.file_index) {
             let filepath = self.config.get_full_path(&task.folder, &task.filename);
@@ -317,8 +334,7 @@ impl App {
             {
                 use std::process::Command;
                 Command::new("cmd")
-                    .args(&["/c", "start"])
-                    .arg(&filepath)
+                    .args(&["/c", "start", "", &filepath])
                     .spawn()?;
             }
 
@@ -399,6 +415,46 @@ impl App {
         }
     }
 
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
+    pub fn handle_char_input(&mut self, c: char) {
+        let now = Instant::now();
+
+        if self.last_char == Some(c) && now.duration_since(self.last_char_time).as_millis() < 30 {
+            return;
+        }
+
+        self.task_name.push(c);
+        self.last_char = Some(c);
+        self.last_char_time = now;
+        self.request_update();
+    }
+
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
+    pub fn handle_folder_name_input(&mut self, c: char) {
+        let now = Instant::now();
+
+        if self.last_char == Some(c) && now.duration_since(self.last_char_time).as_millis() < 30 {
+            return;
+        }
+
+        self.folder_name.push(c);
+        self.last_char = Some(c);
+        self.last_char_time = now;
+        self.request_update();
+    }
+
+    #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+    pub fn handle_char_input(&mut self, c: char) {
+        self.task_name.push(c);
+        self.request_update();
+    }
+
+    #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+    pub fn handle_folder_name_input(&mut self, c: char) {
+        self.folder_name.push(c);
+        self.request_update();
+    }
+
     pub fn is_popup_active(&self) -> bool {
         self.popup_state != PopupState::None
     }
@@ -432,6 +488,17 @@ impl App {
         self.popup_state = PopupState::None;
         self.delete_target = None;
         self.move_target = None;
+
+        #[cfg(any(target_os = "windows", target_os = "macos"))]
+        {
+            self.last_char = None;
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            self.key_buffer.clear();
+        }
+
         self.request_update();
     }
 }

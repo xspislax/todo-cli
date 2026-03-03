@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect, Alignment},
     style::{Color, Style},
     widgets::{Block, BorderType, Borders, Paragraph, List, ListItem, Clear, Table, Row, Cell},
-    text::Span
+    text::{Span},
 };
 
 use crate::app::{App, truncate};
@@ -24,27 +24,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         .constraints([Constraint::Length(3), Constraint::Min(0)])
         .split(main_chunks[0]);
 
-    let view_title = match app.view_mode {
-        ViewMode::Normal => format!("Tasks - {}", app.selected_folder.as_deref().unwrap_or("")),
-        ViewMode::Today => "Today's Tasks".to_string(),
-        ViewMode::NextSevenDays => "Next 7 Days".to_string(),
-        ViewMode::WithoutDate => "WithoutDate".to_string(),
-    };
-
-    let input_text = if app.task_name.is_empty() {
-        Span::raw(" ")
-    } else {
-        Span::raw(app.task_name.as_str())
-    };
-
-    let inputwidet = Paragraph::new(input_text)
-        .block(Block::default()
-            .borders(Borders::ALL)
-            .border_type(BorderType::Rounded)
-            .title(view_title))
-        .style(Style::default().fg(Color::White));
-
-    f.render_widget(inputwidet, left_chunks[0]);
+    draw_input(f, app, left_chunks[0]);
 
     let content = Layout::default()
         .direction(Direction::Vertical)
@@ -78,6 +58,56 @@ pub fn draw(f: &mut Frame, app: &mut App) {
 
     if app.calendar.show_day_tasks {
         crate::calendar::draw_calendar_day_tasks_popup(f, app, size);
+    }
+}
+
+fn draw_input(f: &mut Frame, app: &mut App, area: Rect) {
+    let view_title = match app.view_mode {
+        ViewMode::Normal => format!("Tasks - {}", app.selected_folder.as_deref().unwrap_or("")),
+        ViewMode::Today => "Today's Tasks".to_string(),
+        ViewMode::NextSevenDays => "Next 7 Days".to_string(),
+        ViewMode::WithoutDate => "WithoutDate".to_string(),
+    };
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .title(view_title);
+
+    #[cfg(target_os = "windows")]
+    {
+        f.render_widget(block.clone(), area);
+
+        let inner_area = block.inner(area);
+
+        f.render_widget(Clear, inner_area);
+
+        let display_text = if app.task_name.is_empty() {
+            " "
+        } else {
+            app.task_name.as_str()
+        };
+
+        let paragraph = Paragraph::new(display_text)
+            .style(Style::default().fg(Color::White))
+            .block(Block::default().borders(Borders::NONE));
+
+        f.render_widget(paragraph, inner_area);
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let input_text = if app.task_name.is_empty() {
+            Span::raw(" ")
+        } else {
+            Span::raw(app.task_name.as_str())
+        };
+
+        let input_widget = Paragraph::new(input_text)
+            .block(block)
+            .style(Style::default().fg(Color::White));
+
+        f.render_widget(input_widget, area);
     }
 }
 
@@ -254,10 +284,30 @@ fn draw_popup(f: &mut Frame, app: &mut App, size: Rect) {
             Constraint::Min(0)
         ]).split(popup_area);
 
-    let popup_input = Paragraph::new(app.folder_name.as_str())
-        .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded));
+    #[cfg(target_os = "windows")]
+    {
+        let input_block = Block::default().borders(Borders::ALL).border_type(BorderType::Rounded);
+        f.render_widget(input_block.clone(), popup_chunks[0]);
+        let input_inner = input_block.inner(popup_chunks[0]);
+        f.render_widget(Clear, input_inner);
 
-    f.render_widget(popup_input, popup_chunks[0]);
+        let display_text = if app.folder_name.is_empty() {
+            " "
+        } else {
+            app.folder_name.as_str()
+        };
+
+        let popup_input = Paragraph::new(display_text)
+            .block(Block::default().borders(Borders::NONE));
+        f.render_widget(popup_input, input_inner);
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let popup_input = Paragraph::new(app.folder_name.as_str())
+            .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded));
+        f.render_widget(popup_input, popup_chunks[0]);
+    }
 
     let folder_items: Vec<ListItem> = app.all_folders
         .iter()

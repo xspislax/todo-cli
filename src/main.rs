@@ -9,6 +9,7 @@ mod backend;
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture},
     execute,
+    cursor::{Hide, Show},
     terminal::{ClearType, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode, Clear}
 };
 use ratatui::{Terminal, backend::CrosstermBackend};
@@ -65,13 +66,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn setup_terminal() -> Result<Terminal<CrosstermBackend<std::io::Stdout>>, Box<dyn std::error::Error>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
+
+    #[cfg(target_os = "windows")]
+    {
+        use crossterm::ExecutableCommand;
+        use crossterm::terminal::EnableLineWrap;
+        let _ = stdout.execute(EnableLineWrap);
+    }
+
+    execute!(stdout, Hide)?;
     execute!(stdout, Clear(ClearType::All))?;
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+
     let backend = CrosstermBackend::new(stdout);
-    Ok(Terminal::new(backend)?)
+    let mut terminal = Terminal::new(backend)?;
+    terminal.clear()?;
+
+    Ok(terminal)
 }
 
 fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> Result<(), Box<dyn std::error::Error>> {
+    execute!(terminal.backend_mut(), Show)?;
     execute!(terminal.backend_mut(), Clear(ClearType::All))?;
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture)?;

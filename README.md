@@ -41,11 +41,11 @@ default_folder = "INBOX"
 
 ## Keyboard shortcuts
 
-- `ctrl + l` to open and add task lists
-- `ctrl + v` to open calendars view
-- `ctrl + c` to move task/file to other directory
-- `ctrl + f` to open .md file in default markdown editor app on your system
-- `ctrl + d` to delete file or directory (except the `default_folder` directory)
+- `ctrl/alt + l` to open and add task lists
+- `ctrl/alt + v` to open calendars view
+- `ctrl/alt + c` to move task/file to other directory
+- `ctrl/alt + f` to open .md file in default markdown editor app on your system
+- `ctrl/alt + d` to delete file or directory (except the `default_folder` directory)
 - `right arrow` key opens the file preview
 - `arrows` used for navigation
 

@@ -47,7 +47,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
             draw_file_preview(f, app, size);
         }
         crate::app::PopupState::ConfirmDelete => {
-            draw_popup_delete(f, size);
+            draw_popup_delete(f, size, app);
         }
         crate::app::PopupState::None => {}
     }
@@ -62,6 +62,16 @@ pub fn draw(f: &mut Frame, app: &mut App) {
 }
 
 fn draw_input(f: &mut Frame, app: &mut App, area: Rect) {
+    let border_type = match app.config.view.border_types.to_lowercase().as_str() {
+        #[allow(clippy::match_same_arms)]
+        "rounded" => BorderType::Rounded,
+        "thick" => BorderType::Thick,
+        "double" => BorderType::Double,
+        "plain" => BorderType::Plain,
+        "quadrant" => BorderType::QuadrantOutside,
+        _ => BorderType::Rounded,
+    };
+
     let view_title = match app.view_mode {
         ViewMode::Normal => format!("Tasks - {}", app.selected_folder.as_deref().unwrap_or("")),
         ViewMode::Today => "Today's Tasks".to_string(),
@@ -71,8 +81,8 @@ fn draw_input(f: &mut Frame, app: &mut App, area: Rect) {
 
     let block = Block::default()
         .borders(Borders::ALL)
-        .border_type(BorderType::Rounded)
-        .title(view_title);
+        .border_type(border_type)
+        .title(view_title).title_alignment(ratatui::layout::HorizontalAlignment::Center);
 
     #[cfg(target_os = "windows")]
     {
@@ -112,13 +122,22 @@ fn draw_input(f: &mut Frame, app: &mut App, area: Rect) {
 }
 
 fn draw_move_popup(f: &mut Frame, app: &mut App, size: Rect) {
+    let border_type = match app.config.view.border_types.to_lowercase().as_str() {
+        #[allow(clippy::match_same_arms)]
+        "rounded" => BorderType::Rounded,
+        "thick" => BorderType::Thick,
+        "double" => BorderType::Double,
+        "plain" => BorderType::Plain,
+        "quadrant" => BorderType::QuadrantOutside,
+        _ => BorderType::Rounded,
+    };
     let popup_area = centered_rect(30, 35, size);
     f.render_widget(Clear, popup_area);
 
     let popup_block = Block::default()
-        .title("Move task to folder")
+        .title("Move task to folder").title_alignment(ratatui::layout::HorizontalAlignment::Center)
         .borders(Borders::ALL)
-        .border_type(BorderType::Rounded)
+        .border_type(border_type)
         .style(Style::default().fg(Color::White));
 
     f.render_widget(popup_block, popup_area);
@@ -198,6 +217,17 @@ fn draw_tasks_table(f: &mut Frame, app: &mut App, area: Rect) {
             }
         }).collect();
 
+    let border_type = match app.config.view.border_types.to_lowercase().as_str() {
+        #[allow(clippy::match_same_arms)]
+        "rounded" => BorderType::Rounded,
+        "thick" => BorderType::Thick,
+        "double" => BorderType::Double,
+        "plain" => BorderType::Plain,
+        "quadrant" => BorderType::QuadrantOutside,
+        _ => BorderType::Rounded,
+    };
+
+
     let table = Table::new(
         rows,
         columns
@@ -206,20 +236,29 @@ fn draw_tasks_table(f: &mut Frame, app: &mut App, area: Rect) {
     ).block(
         Block::default()
             .borders(Borders::ALL)
-            .border_type(BorderType::Rounded)
+            .border_type(border_type)
     ).row_highlight_style(Style::default().bg(Color::DarkGray).fg(Color::White));
 
     f.render_stateful_widget(table, area, &mut app.table_state);
 }
 
 fn draw_special_views_popup(f: &mut Frame, app: &mut App, size: Rect) {
+    let border_type = match app.config.view.border_types.to_lowercase().as_str() {
+        #[allow(clippy::match_same_arms)]
+        "rounded" => BorderType::Rounded,
+        "thick" => BorderType::Thick,
+        "double" => BorderType::Double,
+        "plain" => BorderType::Plain,
+        "quadrant" => BorderType::QuadrantOutside,
+        _ => BorderType::Rounded,
+    };
     let popup_area = centered_rect(30, 13, size);
     f.render_widget(Clear, popup_area);
 
     let popup_block = Block::default()
-        .title("Special Views")
+        .title("Special Views").title_alignment(ratatui::layout::HorizontalAlignment::Center)
         .borders(Borders::ALL)
-        .border_type(BorderType::Rounded)
+        .border_type(border_type)
         .style(Style::default().fg(Color::White));
 
     f.render_widget(popup_block, popup_area);
@@ -250,28 +289,46 @@ fn draw_special_views_popup(f: &mut Frame, app: &mut App, size: Rect) {
 }
 
 fn draw_file_preview(f: &mut Frame, app: &mut App, size: Rect) {
+    let border_type = match app.config.view.border_types.to_lowercase().as_str() {
+        #[allow(clippy::match_same_arms)]
+        "rounded" => BorderType::Rounded,
+        "thick" => BorderType::Thick,
+        "double" => BorderType::Double,
+        "plain" => BorderType::Plain,
+        "quadrant" => BorderType::QuadrantOutside,
+        _ => BorderType::Rounded,
+    };
     let area = centered_rect(30, 40, size);
     f.render_widget(Clear, area);
 
     let preview = Paragraph::new(app.file_content.as_str())
         .block(
             Block::default()
-                .title("Todo info")
+                .title("Todo info").title_alignment(ratatui::layout::HorizontalAlignment::Center)
                 .borders(Borders::ALL)
-                .border_type(BorderType::Rounded)
+                .border_type(border_type)
         ).wrap(ratatui::widgets::Wrap {trim: false});
 
     f.render_widget(preview, area);
 }
 
 fn draw_popup(f: &mut Frame, app: &mut App, size: Rect) {
+    let border_type = match app.config.view.border_types.to_lowercase().as_str() {
+        #[allow(clippy::match_same_arms)]
+        "rounded" => BorderType::Rounded,
+        "thick" => BorderType::Thick,
+        "double" => BorderType::Double,
+        "plain" => BorderType::Plain,
+        "quadrant" => BorderType::QuadrantOutside,
+        _ => BorderType::Rounded,
+    };
     let popup_area = centered_rect(30, 35, size);
     f.render_widget(Clear, popup_area);
 
     let popup_block = Block::default()
-        .title("Lists")
+        .title("Lists").title_alignment(ratatui::layout::HorizontalAlignment::Center)
         .borders(Borders::ALL)
-        .border_type(BorderType::Rounded)
+        .border_type(border_type)
         .style(Style::default().fg(Color::White));
 
     f.render_widget(popup_block, popup_area);
@@ -286,7 +343,7 @@ fn draw_popup(f: &mut Frame, app: &mut App, size: Rect) {
 
     #[cfg(target_os = "windows")]
     {
-        let input_block = Block::default().borders(Borders::ALL).border_type(BorderType::Rounded);
+        let input_block = Block::default().borders(Borders::ALL).border_type(border_type);
         f.render_widget(input_block.clone(), popup_chunks[0]);
         let input_inner = input_block.inner(popup_chunks[0]);
         f.render_widget(Clear, input_inner);
@@ -305,7 +362,7 @@ fn draw_popup(f: &mut Frame, app: &mut App, size: Rect) {
     #[cfg(not(target_os = "windows"))]
     {
         let popup_input = Paragraph::new(app.folder_name.as_str())
-            .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded));
+            .block(Block::default().borders(Borders::ALL).border_type(border_type));
         f.render_widget(popup_input, popup_chunks[0]);
     }
 
@@ -324,7 +381,16 @@ fn draw_popup(f: &mut Frame, app: &mut App, size: Rect) {
     f.render_stateful_widget(folder_list, popup_chunks[1], &mut app.folder_state);
 }
 
-fn draw_popup_delete(f: &mut Frame, size: Rect) {
+fn draw_popup_delete(f: &mut Frame, size: Rect, app: &mut App) {
+    let border_type = match app.config.view.border_types.to_lowercase().as_str() {
+        #[allow(clippy::match_same_arms)]
+        "rounded" => BorderType::Rounded,
+        "thick" => BorderType::Thick,
+        "double" => BorderType::Double,
+        "plain" => BorderType::Plain,
+        "quadrant" => BorderType::QuadrantOutside,
+        _ => BorderType::Rounded,
+    };
     let area = centered_rect(30, 20, size);
     f.render_widget(Clear, area);
 
@@ -332,9 +398,9 @@ fn draw_popup_delete(f: &mut Frame, size: Rect) {
         "Delete selected item\n\n[y] Yes [n / Esc] Cancel"
     ).block(
         Block::default()
-            .title("Confirm delete")
+            .title("Confirm delete").title_alignment(ratatui::layout::HorizontalAlignment::Center)
             .borders(Borders::ALL)
-            .border_type(BorderType::Rounded)
+            .border_type(border_type)
     ).alignment(Alignment::Center);
 
     f.render_widget(block, area);

@@ -30,13 +30,24 @@ cargo install --path .
 
 ## Configuration
 
-Currently, you can only configure the data path and default folder in the toml file in the `~/.config/todoCLI/config.toml` path. The `default_folder` will be created inside `data_path`
+Currently, the only configuration options are specifying the path to the folder (`data_path`) with files and the default folder (`default_folder`) that is created in the path to the folder with files. Additionally, you can slightly change the appearance by adding `border_types`, which change the appearance of the borders.
+
+The border types are:
+- "rounded" (default)
+- "thick"
+- "double"
+- "plain"
+- "quadrant"
+
 Example config file:
 
 ```toml
 [features]
-data_path = "/Users/xavierspisla/Documents/todo_files"
+data_path = "/Users/xavierspisla/Documents/01 Projects/todo_files"
 default_folder = "INBOX"
+
+[view]
+border_types = "rounded"
 ```
 
 ## Keyboard shortcuts

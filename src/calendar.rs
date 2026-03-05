@@ -11,46 +11,44 @@ use crate::app::{App, truncate};
 use crate::models::days_in_month;
 
 pub fn draw_calendar_popup(f: &mut Frame, app: &mut App, size: Rect) {
+    let border_type = match app.config.view.border_types.to_lowercase().as_str() {
+        #[allow(clippy::match_same_arms)]
+        "rounded" => BorderType::Rounded,
+        "thick" => BorderType::Thick,
+        "double" => BorderType::Double,
+        "plain" => BorderType::Plain,
+        "quadrant" => BorderType::QuadrantOutside,
+        _ => BorderType::Rounded,
+    };
     let popup_area = centered_rect(30, 35, size);
-    f.render_widget(Clear, popup_area);
 
+    f.render_widget(Clear, popup_area);
     let popup_block = Block::default()
-        .title(format!("Calendar - {}", app.calendar.current_date.format("%B %Y")))
+        .title(format!("Calendar - {}", app.calendar.current_date.format("%B %Y"))).title_alignment(ratatui::layout::HorizontalAlignment::Center)
         .borders(Borders::ALL)
-        .border_type(BorderType::Rounded)
+        .border_type(border_type)
         .style(Style::default().fg(Color::White));
 
     f.render_widget(popup_block, popup_area);
 
     let vertical_padding = (popup_area.height.saturating_sub(12)) / 2;
     let horizontal_padding = (popup_area.width.saturating_sub(40)) / 2;
-
-    let centered_area = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
+    let centered_area = Layout::default().direction(Direction::Vertical).constraints([
             Constraint::Length(vertical_padding),
             Constraint::Length(10),
             Constraint::Length(vertical_padding),
-        ])
-        .split(popup_area)[1];
+    ]).split(popup_area)[1];
 
-    let centered_area = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
+    let centered_area = Layout::default().direction(Direction::Horizontal).constraints([
             Constraint::Length(horizontal_padding),
             Constraint::Length(40),
             Constraint::Length(horizontal_padding),
-        ])
-        .split(centered_area)[1];
-
-    let calendar_layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
+        ]).split(centered_area)[1];
+    let calendar_layout = Layout::default().direction(Direction::Vertical).constraints([
             Constraint::Length(3),
             Constraint::Min(0),
             Constraint::Length(1),
-        ])
-        .split(centered_area);
+        ]).split(centered_area);
 
     let weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     let mut header_cells = Vec::new();
@@ -118,29 +116,34 @@ pub fn draw_calendar_popup(f: &mut Frame, app: &mut App, size: Rect) {
     }
 
     let widths = vec![Constraint::Length(5); 7];
-    let calendar_table = Table::new(rows, widths)
-        .header(header_row)
-        .block(Block::default().borders(Borders::NONE));
+    let calendar_table = Table::new(rows, widths).header(header_row).block(Block::default().borders(Borders::NONE));
 
     f.render_widget(calendar_table, calendar_layout[1]);
 
-    let nav_text = Paragraph::new("←/→ day • ↑/↓ week • Enter select • Esc close")
-        .style(Style::default().fg(Color::DarkGray))
-        .alignment(Alignment::Center);
+    let nav_text = Paragraph::new("←/→ day • ↑/↓ week • Enter select • Esc close").style(Style::default().fg(Color::DarkGray)).alignment(Alignment::Center);
 
     f.render_widget(nav_text, calendar_layout[2]);
 }
 
 pub fn draw_calendar_day_tasks_popup(f: &mut Frame, app: &mut App, size: Rect) {
+    let border_type = match app.config.view.border_types.to_lowercase().as_str() {
+        #[allow(clippy::match_same_arms)]
+        "rounded" => BorderType::Rounded,
+        "thick" => BorderType::Thick,
+        "double" => BorderType::Double,
+        "plain" => BorderType::Plain,
+        "quadrant" => BorderType::QuadrantOutside,
+        _ => BorderType::Rounded,
+    };
     let popup_area = centered_rect(70, 70, size);
     f.render_widget(Clear, popup_area);
 
     let title = format!("Tasks for {}", app.calendar.selected_date.format("%d.%m.%Y"));
 
     let popup_block = Block::default()
-        .title(title)
+        .title(title).title_alignment(ratatui::layout::HorizontalAlignment::Center)
         .borders(Borders::ALL)
-        .border_type(BorderType::Rounded)
+        .border_type(border_type)
         .style(Style::default().fg(Color::White));
 
     f.render_widget(popup_block, popup_area);

@@ -2,16 +2,46 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use ratatui::widgets::BorderType;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Config {
     pub features: Features,
+    pub view: View,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Features {
     pub data_path: String,
     pub default_folder: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct View {
+    pub border_types: String,
+}
+
+impl Default for View {
+    fn default() -> Self {
+        Self {
+            border_types: "rounded".to_string(),
+        }
+    }
+}
+
+impl View {
+    #[allow(dead_code)]
+    pub fn get_border_type(&self) -> BorderType {
+        match self.border_types.to_lowercase().as_str() {
+            #[allow(clippy::match_same_arms)]
+            "rounded" => BorderType::Rounded,
+            "thick" => BorderType::Thick,
+            "double" => BorderType::Double,
+            "plain" => BorderType::Plain,
+            "quadrant" => BorderType::QuadrantOutside,
+            _ => BorderType::Rounded,
+        }
+    }
 }
 
 impl Default for Config {
@@ -24,6 +54,7 @@ impl Default for Config {
                 data_path: default_path.to_string_lossy().to_string(),
                 default_folder: "INBOX".to_string(),
             },
+            view: View::default(),
         }
     }
 }
